@@ -1,30 +1,23 @@
 ﻿<!DOCTYPE html>
 <html lang="ja">
-    <head>
-        <meta charset="UTF-8">
-        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>芸人タイマー</title>
-        <link rel="stylesheet" href="./contesttimer.css">
-    </head>
-    <body>
-        <h1>タイマー（カウントアップ・2アラーム・単一HTML）</h1>
-        <div id="time" aria-live="polite">-00:03</div>
-        <div class="row">
-            警告：
-            <select id="a1m"></select> 分
-            <select id="a1s"></select> 秒
-        </div>
-        <div class="row">
-            終了：
-            <select id="a2m"></select> 分
-            <select id="a2s"></select> 秒
-        </div>
-        <div class="row">
-            <button id="toggle" class="toggle"></button>
-            <button id="reset" disabled>リセット</button>
-        </div>
+<head>
+    <meta charset="UTF-8">
+    <title>芸人タイマー</title>
+    <link rel="stylesheet" href="./contesttimer.css">
+</head>
+<body>
+    <h1>タイマー（カウントアップ・可変アラーム）</h1>
+    <div id="time" aria-live="polite">-00:03</div>
 
-        <script src="./contesttimer.js" defer></script>
-    </body>
+    <div id="alarms"></div>
+
+    <button id="add-alarm">＋ アラーム追加</button>
+
+    <div class="row">
+        <button id="toggle" class="toggle"></button>
+        <button id="reset" disabled>リセット</button>
+    </div>
+
+    <script src="./contesttimer.js" defer></script>
+</body>
 </html>
