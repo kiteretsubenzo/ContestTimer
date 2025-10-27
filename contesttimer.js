@@ -21,6 +21,7 @@
     const STATE = {
         elapsed: CONFIG.DEFAULT_START,
         running: false,
+        starting: false,
         timerId: null,
         fired: new Set(),
         canReset: false,
@@ -75,14 +76,24 @@
         const m = Math.floor(a / 60), t = a % 60; return `${s}${String(m).padStart(2, '0')}:${String(t).padStart(2, '0')}`;
     }
     function render() { timeEl.textContent = fmtSigned(STATE.elapsed); }
-    function updateControls() { resetBtn.disabled = STATE.running || !STATE.canReset; toggleBtn.classList.toggle('running', STATE.running); }
+    function updateControls() {
+   resetBtn.disabled = STATE.running || !STATE.canReset;
+   toggleBtn.classList.toggle('running', STATE.running);
+   // スタート処理中はトグルを一時的に押せないようにする（再入防止の保険）
+   toggleBtn.disabled = STATE.starting;
+ }
 
     function start() {
-        if (STATE.running) return;
-        // まず選択音をプライム（ユーザー操作直後）
+        if (STATE.running || STATE.starting) return; // ← 連打・再入ガード
+   STATE.starting = true;
+   updateControls();
+   // ユーザー操作直後に音をプライム
    primeSelectedSounds().finally(() => {
-    STATE.running = true;
-    updateControls();
+     // 念のため二重起動の保険
+     if (STATE.running) { STATE.starting = false; updateControls(); return; }
+      STATE.running = true;
+     STATE.starting = false;
+     updateControls();
      STATE.timerId = setInterval(tick, CONFIG.TICK_MS);
    });
     }
