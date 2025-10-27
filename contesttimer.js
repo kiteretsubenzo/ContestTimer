@@ -79,15 +79,12 @@
 
     function start() {
         if (STATE.running) return;
-        STATE.running = true;
-        updateControls();
         // まず選択音をプライム（ユーザー操作直後）
    primeSelectedSounds().finally(() => {
     STATE.running = true;
     updateControls();
      STATE.timerId = setInterval(tick, CONFIG.TICK_MS);
    });
-        STATE.timerId = setInterval(tick, CONFIG.TICK_MS);
     }
     function stop() { if (STATE.timerId) clearInterval(STATE.timerId); STATE.timerId = null; STATE.running = false; STATE.canReset = true; updateControls(); }
     function reset() { if (STATE.running) return; STATE.elapsed = CONFIG.DEFAULT_START; STATE.fired.clear(); STATE.canReset = false; render(); updateControls(); }
