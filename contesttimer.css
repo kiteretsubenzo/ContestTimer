@@ -1,89 +1,53 @@
-body {
-    font-family: system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans JP",sans-serif;
-    background: #111;
-    color: #fff;
-    margin: 16px;
-    text-align: center
-}
-
-h1 {
-    font-size: 1.1rem;
-    margin: .2rem 0 .6rem
-}
-
-.sound {
-    width: 12em;
-}
-
+/* タイマー文字を真っ白に */
 #time {
-    font-variant-numeric: tabular-nums;
-    font-size: 3rem;
-    margin: .3rem 0
+    color: #fff;
 }
 
-.row {
-    margin: .2rem 0
+/* アラームヘッダーのラベルも真っ白 */
+.card-header {
+    color: #fff;
 }
 
-button {
-    margin: .25rem;
-    padding: .45rem 1rem;
-    font-weight: 700
+/* アラーム行のレイアウト */
+.alarm-row {
+    margin: .35rem 0;
 }
 
-#reset:disabled {
-    opacity: .45
+/* セレクト間の間隔 */
+.alarm-row select {
+    margin: 0 .25rem;
 }
 
-select {
-    width: 4.2em;
-    text-align: center;
-    font-size: 1rem;
-    padding: .2rem;
+/* 音セレクトの幅 */
+.sound {
+    min-width: 12em;
 }
 
-/* 通常時（スタート） */
-button.toggle::before {
+/* 削除ボタン */
+button.remove {
+    margin-left: .5rem;
+}
+
+/* トグルボタンのラベル切替 */
+#toggle::before {
     content: "スタート";
 }
 
-/* running中（ストップ） */
-button.toggle.running::before {
+#toggle.running::before {
     content: "ストップ";
 }
 
-.alarm-row {
-    margin: .2rem 0;
+/* リセットボタンの無効状態を強調 */
+#reset:disabled {
+    background-color: #444 !important;
+    color: #aaa !important;
+    border-color: #555 !important;
+    cursor: not-allowed !important;
+    opacity: 1 !important; /* Bootstrapの透過を打ち消す */
 }
 
-    .alarm-row select {
-        margin: 0 .2rem;
-    }
-
-.sound {
-    width: 12em;
-}
-
-button.remove {
-    margin-left: .5em;
-    background: #444;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-button.remove:hover {
-    background: #c33;
-}
-
+/* クレジット控えめ */
+footer,
 .credits {
-    margin-top: 1.25rem; /* 少し余白 */
-    font-size: 0.85rem; /* 目立ちすぎないサイズ */
-    color: #666; /* うすめの色 */
-}
-
-.credits a {
-    color: inherit; /* テキスト色に合わせる */
-    text-decoration: underline;
+    color: #888;
 }
