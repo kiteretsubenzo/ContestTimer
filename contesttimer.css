@@ -1,1 +1,49 @@
+body {
+                font-family: system-ui,-apple-system,Segoe UI,Roboto,"Noto Sans JP",sans-serif;
+                background: #111;
+                color: #fff;
+                margin: 16px;
+                text-align: center
+            }
 
+            h1 {
+                font-size: 1.1rem;
+                margin: .2rem 0 .6rem
+            }
+
+            #time {
+                font-variant-numeric: tabular-nums;
+                font-size: 3rem;
+                margin: .3rem 0
+            }
+
+            .row {
+                margin: .2rem 0
+            }
+
+            button {
+                margin: .25rem;
+                padding: .45rem 1rem;
+                font-weight: 700
+            }
+
+            #reset:disabled {
+                opacity: .45
+            }
+
+            select {
+                width: 4.2em;
+                text-align: center;
+                font-size: 1rem;
+                padding: .2rem;
+            }
+
+            /* 通常時（スタート） */
+            button.toggle::before {
+                content: "スタート";
+            }
+
+            /* running中（ストップ） */
+            button.toggle.running::before {
+                content: "ストップ";
+            }
