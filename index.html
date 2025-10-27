@@ -2,11 +2,12 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>芸人タイマー</title>
+    <title>賞レースタイマー</title>
+    <link rel="icon" type="image/jpg" href="./favicon.jpg">
     <link rel="stylesheet" href="./contesttimer.css">
 </head>
 <body>
-    <h1>タイマー（カウントアップ・可変アラーム）</h1>
+    <h1>賞レースタイマー</h1>
     <div id="time" aria-live="polite">-00:03</div>
 
     <div id="alarms"></div>
@@ -17,6 +18,11 @@
         <button id="toggle" class="toggle"></button>
         <button id="reset" disabled>リセット</button>
     </div>
+
+    <footer class="credits" aria-label="attribution">
+        Sound effects obtained from
+        <a href="https://www.zapsplat.com" target="_blank" rel="noopener noreferrer nofollow">ZapSplat.com</a>
+    </footer>
 
     <script src="./contesttimer.js" defer></script>
 </body>

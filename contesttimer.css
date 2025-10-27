@@ -76,3 +76,14 @@ button.remove {
 button.remove:hover {
     background: #c33;
 }
+
+.credits {
+    margin-top: 1.25rem; /* 少し余白 */
+    font-size: 0.85rem; /* 目立ちすぎないサイズ */
+    color: #666; /* うすめの色 */
+}
+
+.credits a {
+    color: inherit; /* テキスト色に合わせる */
+    text-decoration: underline;
+}
