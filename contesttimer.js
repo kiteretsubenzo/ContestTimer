@@ -30,12 +30,46 @@
     const AUDIO_CACHE = new Map();
     function getAudio(src) {
         if (!AUDIO_CACHE.has(src)) {
-            const a = new Audio(); a.preload = 'auto'; a.src = src;
+            const a = new Audio();
+            a.preload = 'auto';
+            a.playsInline = true; // iOSでのインライン再生
+            a.src = src;
             AUDIO_CACHE.set(src, a);
         }
         return AUDIO_CACHE.get(src);
     }
 
+     // スタート押下時に、選択中サウンドを事前ロード＆解除
+ async function primeSelectedSounds() {
+    // 現在のリストから、OFF以外のURLをユニークに抽出
+   const urls = Array.from(new Set(
+     STATE.alarms
+       .map(a => a.sound?.value)
+      .filter(v => typeof v === 'string' && v.length > 0)
+   ));
+   // 何もなければ何もしない
+   if (urls.length === 0) return;
+
+  // 各音源を load → muted再生→停止 で “再生権限” を掴む
+  await Promise.allSettled(urls.map(async (u) => {
+     const a = getAudio(u);
+     try {
+       a.preload = 'auto';
+       a.load(); // ネットワーク開始（即時に完了しなくてOK）
+        const prevMuted = a.muted;
+       const prevTime  = a.currentTime;
+       a.muted = true;
+       a.currentTime = 0;
+       await a.play().catch(() => {}); // iOSはユーザー操作直後なので許可される
+       a.pause();
+       a.muted = prevMuted;
+      a.currentTime = prevTime;
+     } catch (_) {
+       // 失敗しても致命ではない（後段の本再生で再挑戦）
+     }
+  }));
+ }
+    
     function fmtSigned(sec) {
         const s = sec < 0 ? '-' : ''; const a = Math.abs(sec);
         const m = Math.floor(a / 60), t = a % 60; return `${s}${String(m).padStart(2, '0')}:${String(t).padStart(2, '0')}`;
@@ -45,7 +79,14 @@
 
     function start() {
         if (STATE.running) return;
-        STATE.running = true; updateControls();
+        STATE.running = true;
+        updateControls();
+        // まず選択音をプライム（ユーザー操作直後）
+   primeSelectedSounds().finally(() => {
+    STATE.running = true;
+    updateControls();
+     STATE.timerId = setInterval(tick, CONFIG.TICK_MS);
+   });
         STATE.timerId = setInterval(tick, CONFIG.TICK_MS);
     }
     function stop() { if (STATE.timerId) clearInterval(STATE.timerId); STATE.timerId = null; STATE.running = false; STATE.canReset = true; updateControls(); }
