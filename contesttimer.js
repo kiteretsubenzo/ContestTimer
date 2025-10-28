@@ -4,127 +4,139 @@
     const stopBtn = document.getElementById('btn-stop');
     const resetBtn = document.getElementById('reset');
 
-    const NAMES = window.SOUND_FILES || []; // 例: ['start','警告1','警告2','警告3','爆発1']
-    const toUrl = (name) => `sounds/${encodeURIComponent(name)}.mp3`;
+    // 再生対象のファイル名（soundfiles.js で定義）
+    const NAMES = window.SOUND_FILES || [];
 
     // ====== 状態 ======
     let running = false;
-    let elapsed = -3;    // 表示用（-3からカウントアップ）
+    let elapsed = -3; // 表示用タイマー
     let prev = -3;
     let uiTimer = null;
 
-    // Web Audio（iPhone対策）
+    // ====== Web Audio ======
     let audioCtx = null;
-    const BUFFERS = new Map();     // name -> AudioBuffer（この context で decode 済み）
-    let scheduled = [];            // [{src, at, name}]
-    const FIXED = [{ t: 10, i: 0 }, { t: 20, i: 1 }, { t: 30, i: 2 }]; // t=秒, i=names index
+    const BUFFERS = new Map();  // name -> AudioBuffer
+    const SCHEDULES = [];       // {src, at, name}
+    const FIXED = [
+        { t: 10, i: 0 },
+        { t: 20, i: 1 },
+        { t: 30, i: 2 }
+    ];
 
-    // ====== 表示系 ======
+    // ====== 表示関連 ======
     const fmt = (n) => {
         const sign = n < 0 ? '-' : '';
-        n = Math.abs(n);
-        const m = Math.floor(n / 60), s = n % 60;
+        const abs = Math.abs(n);
+        const m = Math.floor(abs / 60);
+        const s = abs % 60;
         return `${sign}${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     };
-    const render = () => { timeEl.textContent = fmt(elapsed); };
+
+    const render = () => {
+        timeEl.textContent = fmt(elapsed);
+    };
+
     const updateControls = () => {
         startBtn.classList.toggle('d-none', running);
         stopBtn.classList.toggle('d-none', !running);
         resetBtn.disabled = running || elapsed === -3;
     };
 
-    // ====== デコード（AudioContext作成後に行う：iOS安定のため） ======
-    async function ensureBuffer(name) {
+    // ====== Audio 読み込み ======
+    async function loadBuffer(name) {
         if (BUFFERS.has(name)) return BUFFERS.get(name);
-        const res = await fetch(toUrl(name), { cache: 'reload' });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const arr = await res.arrayBuffer();
-        const buf = await audioCtx.decodeAudioData(arr);
-        BUFFERS.set(name, buf);
-        return buf;
-    }
-
-    // ====== 予約再生（AudioContextの絶対時刻で start） ======
-    function schedulePlayAt(name, atTime) {
-        const buf = BUFFERS.get(name);
-        if (!buf) return; // 安全側
-        const src = audioCtx.createBufferSource();
-        src.buffer = buf;
-        src.connect(audioCtx.destination);
         try {
-            src.start(atTime); // ← ここが肝：将来時刻に予約
-            scheduled.push({ src, at: atTime, name });
+            const res = await fetch(`sounds/${name}.mp3`, { cache: 'reload' });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const arr = await res.arrayBuffer();
+            const buf = await audioCtx.decodeAudioData(arr);
+            BUFFERS.set(name, buf);
+            return buf;
         } catch (e) {
-            console.warn('schedule failed:', name, e);
+            console.warn('loadBuffer failed:', name, e);
+            return null;
         }
     }
 
-    // ====== スタート ======
+    // ====== 再生予約 ======
+    function schedulePlay(name, delaySeconds) {
+        const buf = BUFFERS.get(name);
+        if (!buf) return;
+        const src = audioCtx.createBufferSource();
+        src.buffer = buf;
+        src.connect(audioCtx.destination);
+
+        const at = audioCtx.currentTime + delaySeconds;
+        try {
+            src.start(at);
+            SCHEDULES.push({ src, at, name });
+        } catch (e) {
+            console.warn('schedulePlay failed:', name, e);
+        }
+    }
+
+    // ====== タイマー ======
+    function tick() {
+        prev = elapsed;
+        elapsed += 1;
+        render();
+    }
+
+    // ====== 開始 ======
     async function start() {
         if (running) return;
         running = true;
         updateControls();
 
-        // iOS要件：ユーザー操作中に context を新規作成 & resume
-        audioCtx?.close?.();                 // 前回残っていれば閉じてクリーンに
+        // AudioContextをユーザー操作で生成＆resume
+        if (audioCtx) {
+            try {
+                await audioCtx.close();
+            } catch { }
+        }
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if (audioCtx.state !== 'running') {
-            try { await audioCtx.resume(); } catch { }
+        try {
+            await audioCtx.resume();
+        } catch { }
+
+        // 対象音をロード
+        const targets = FIXED.map(x => NAMES[x.i]).filter(Boolean);
+        for (const name of targets) {
+            await loadBuffer(name);
         }
 
-        // この context で必要音を decode（先頭3つが対象）
-        const targetNames = FIXED.map(x => NAMES[x.i]).filter(Boolean);
-        for (const name of targetNames) {
-            try { await ensureBuffer(name); } catch (e) { console.warn('decode failed:', name, e); }
-        }
-
-        // 予約：画面上は -3 から開始なので、0:10 は「スタートから +13秒」
-        const now = audioCtx.currentTime;
-        scheduled = [];
+        // スケジュール設定 (-3から始まるので +3秒オフセット)
+        const offset = 3;
         for (const { t, i } of FIXED) {
             const name = NAMES[i];
-            if (!name || !BUFFERS.get(name)) continue;
-            const delayFromStart = t + 3;           // -3 → 0 までの3秒を足す
-            const at = now + delayFromStart;
-            schedulePlayAt(name, at);
+            if (!name || !BUFFERS.has(name)) continue;
+            schedulePlay(name, t + offset);
         }
 
-        // 表示カウント（再生は上の予約に任せる）
+        // UIタイマー開始（表示のみ）
         prev = elapsed;
-        uiTimer = setInterval(() => {
-            prev = elapsed;
-            elapsed += 1;
-            render();
-            // 取りこぼし保険（万一予約が失敗した場合に限り、跨ぎ検知で即再生）
-            for (const { t, i } of FIXED) {
-                const name = NAMES[i];
-                if (!name) continue;
-                if (prev < t && t <= elapsed) {
-                    // すでに予約されているなら何もしない（二重再生防止）
-                    // 予約配列に該当が無ければ今すぐ再生（保険）
-                    const has = scheduled.some(s => s.name === name && s.at >= audioCtx.currentTime - 0.05);
-                    if (!has && BUFFERS.get(name)) {
-                        const src = audioCtx.createBufferSource();
-                        src.buffer = BUFFERS.get(name);
-                        src.connect(audioCtx.destination);
-                        try { src.start(0); } catch { }
-                    }
-                }
-            }
-        }, 1000);
+        uiTimer = setInterval(tick, 1000);
     }
 
-    // ====== ストップ / リセット ======
+    // ====== 停止 ======
     function stop() {
         if (!running) return;
-        clearInterval(uiTimer); uiTimer = null;
-        // 予約していた音を止める
-        try { scheduled.forEach(s => s.src.stop(0)); } catch { }
-        scheduled = [];
+
+        clearInterval(uiTimer);
+        uiTimer = null;
+
+        try {
+            for (const s of SCHEDULES) {
+                s.src.stop(0);
+            }
+        } catch { }
+
+        SCHEDULES.length = 0;
         running = false;
         updateControls();
     }
 
+    // ====== リセット ======
     function reset() {
         if (running) return;
         elapsed = -3;
@@ -133,12 +145,12 @@
         updateControls();
     }
 
-    // ====== イベント ======
+    // ====== イベント登録 ======
     startBtn.addEventListener('click', start);
     stopBtn.addEventListener('click', stop);
     resetBtn.addEventListener('click', reset);
 
-    // 初期表示
+    // 初期化
     render();
     updateControls();
 })();
