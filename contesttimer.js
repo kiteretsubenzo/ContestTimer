@@ -161,7 +161,6 @@
         const items = collectScheduleFromList(); // [{name, atSec}, ...]
         // -3 → 0 までの3秒オフセットを足して予約（表示が -00:03 から始まるため）
         const now = audioCtx.currentTime;
-        const offset = 3;
 
         // 3) 必要な音を decode（同一Context）→ 4) 絶対時刻で予約
         //    同名は1回だけ decode
@@ -173,8 +172,12 @@
         scheduled = [];
         for (const { name, atSec } of items) {
             if (!BUFFERS.has(name)) continue;
-            const when = now + offset + atSec;
-            schedulePlayAt(name, when);
+            // 再スタート対応：今の elapsed から見て未来だけ予約
+            const delay = atSec - elapsed;   // 残り秒数（初回は atSec - (-3) = atSec + 3）
+            if (delay > 0.02) {              // しきい値（20ms）より未来だけ
+                const when = now + delay;
+                schedulePlayAt(name, when);
+            }
         }
 
         // 5) UIタイマー開始（音はスケジューラ任せ）
