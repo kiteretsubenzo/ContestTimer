@@ -45,47 +45,190 @@
 
     async function loadSound(url) {
         if (BUFFERS.has(url)) return BUFFERS.get(url);
-        const res = await fetch(url, { cache: 'force-cache' });
-        if (!res.ok) throw new Error(`fetch failed: ${url}`);
-        const arr = await res.arrayBuffer();
-        const buf = await decodeArrayBuffer(arr);
+        const res = await fetch(url);
+        if (!res.ok) throw new Error('fetch failed');
+        const arrBuf = await res.arrayBuffer();
+        const buf = await decodeArrayBuffer(arrBuf);
         BUFFERS.set(url, buf);
         return buf;
     }
 
     function playSound(url) {
         const buf = BUFFERS.get(url);
-        if (!buf) return; // 未ロード（理論上ここは通らない想定）
-        // 毎回新しい source を作る（WebAudioの原則）
+        if (!buf) return;
         const src = audioCtx.createBufferSource();
         src.buffer = buf;
         src.connect(audioCtx.destination);
-        try { src.start(0); } catch { }
+        try { src.start(0); } catch { /* iOS一部で二重start回避 */ }
     }
 
-    // 現在のアラーム設定から、OFF以外のユニークURLを抽出
-    function getSelectedSoundUrls() {
-        return Array.from(new Set(
-            STATE.alarms
-                .map(a => a.sound?.value)
-                .filter(v => typeof v === 'string' && v.length > 0)
-        ));
+    function formatMMSS(n) {
+        const m = Math.floor(n / 60);
+        const s = n % 60;
+        return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     }
 
-    // ===== 表示/制御 =====
-    function fmtSigned(sec) {
-        const s = sec < 0 ? '-' : '';
-        const a = Math.abs(sec);
-        const m = Math.floor(a / 60), t = a % 60;
-        return `${s}${String(m).padStart(2, '0')}:${String(t).padStart(2, '0')}`;
-    }
     function render() {
-        timeEl.textContent = fmtSigned(STATE.elapsed);
+        timeEl.textContent = formatMMSS(STATE.elapsed);
     }
+
     function updateControls() {
+        toggleBtn.textContent = STATE.running ? 'ストップ' : 'スタート';
         resetBtn.disabled = STATE.running || !STATE.canReset;
-        toggleBtn.classList.toggle('running', STATE.running);
-        toggleBtn.disabled = STATE.starting; // 起動中は押せない
+    }
+
+    function getSelectedSoundUrls() {
+        const set = new Set();
+        for (const a of STATE.alarms) {
+            if (a.sound.value) set.add(a.sound.value);
+        }
+        return Array.from(set);
+    }
+
+    // ===== UI生成 =====
+    function makeNumberSelect(min, max) {
+        const sel = document.createElement('select');
+        sel.className = 'form-select form-select-lg bg-black text-white border-secondary';
+        for (let i = min; i <= max; i++) {
+            const opt = document.createElement('option');
+            opt.value = String(i);
+            opt.textContent = String(i).padStart(2, '0');
+            sel.appendChild(opt);
+        }
+        return sel;
+    }
+
+    function makeSoundSelect() {
+        const sel = document.createElement('select');
+        sel.className = 'form-select form-select-lg bg-black text-white border-secondary';
+        {
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = '（なし）';
+            sel.appendChild(opt);
+        }
+        for (const f of SOUND_FILES) {
+            const opt = document.createElement('option');
+            opt.value = f;
+            opt.textContent = f;
+            sel.appendChild(opt);
+        }
+        return sel;
+    }
+
+    function createAlarmRow(init) {
+        const row = document.createElement('div');
+        row.className = 'row g-2 align-items-center mb-2';
+
+        const colMin = document.createElement('div');
+        colMin.className = 'col-4';
+        const minSel = makeNumberSelect(0, 59);
+        colMin.appendChild(minSel);
+
+        const colSec = document.createElement('div');
+        colSec.className = 'col-4';
+        const secSel = makeNumberSelect(0, 59);
+        colSec.appendChild(secSel);
+
+        const colSound = document.createElement('div');
+        colSound.className = 'col-4';
+        const soundSel = makeSoundSelect();
+        colSound.appendChild(soundSel);
+
+        const colDel = document.createElement('div');
+        colDel.className = 'col-12 mt-1';
+        const delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'btn btn-outline-danger w-100';
+        delBtn.textContent = '削除';
+        colDel.appendChild(delBtn);
+
+        row.appendChild(colMin);
+        row.appendChild(colSec);
+        row.appendChild(colSound);
+        row.appendChild(colDel);
+
+        alarmsWrap.appendChild(row);
+
+        const alarm = { root: row, min: minSel, sec: secSel, sound: soundSel, del: delBtn };
+        STATE.alarms.push(alarm);
+
+        // 初期値
+        if (init) {
+            minSel.value = String(init.m ?? 0);
+            secSel.value = String(init.s ?? 0);
+            soundSel.value = String(init.sound ?? '');
+        }
+
+        // 削除
+        delBtn.addEventListener('click', () => {
+            if (STATE.running) return;
+            const idx = STATE.alarms.indexOf(alarm);
+            if (idx >= 0) STATE.alarms.splice(idx, 1);
+            try { alarmsWrap.removeChild(row); } catch { }
+            STATE.fired.delete(alarm);
+            saveAlarms();
+        });
+
+        // 変更時の保存＋事前デコード
+        const onChange = async () => {
+            saveAlarms();
+            if (STATE.running && soundSel.value) {
+                try { await loadSound(soundSel.value); } catch { }
+            }
+        };
+        soundSel.addEventListener('change', onChange);
+        minSel.addEventListener('change', saveAlarms);
+        secSel.addEventListener('change', saveAlarms);
+    }
+
+    // ===== 発火チェック =====
+    function checkAlarms(prev, curr) {
+        for (const a of STATE.alarms) {
+            if (a.sound.value === '') continue;
+            const when = (+a.min.value * 60) + (+a.sec.value);
+            // ★ 跨ぎ検知：prev < when <= curr のときだけ一度鳴らす
+            if (prev < when && when <= curr && !STATE.fired.has(a)) {
+                STATE.fired.add(a);
+                // 事前ロード済みのはずだが、念のため存在しなければロードしてから再生
+                if (!BUFFERS.has(a.sound.value)) {
+                    loadSound(a.sound.value).then(() => playSound(a.sound.value)).catch(() => { });
+                } else {
+                    playSound(a.sound.value);
+                }
+            }
+        }
+    }
+
+    // ===== 保存/復元 =====
+    function saveAlarms() {
+        try {
+            const data = STATE.alarms.map(a => ({
+                m: +a.min.value,
+                s: +a.sec.value,
+                sound: a.sound.value || '' // OFFは空
+            }));
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        } catch { }
+    }
+
+    function loadAlarms() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) return false;
+            const list = JSON.parse(raw);
+            if (!Array.isArray(list)) return false;
+
+            STATE.alarms.length = 0;
+            alarmsWrap.innerHTML = '';
+
+            for (const it of list) {
+                createAlarmRow(it);
+            }
+            return true;
+        } catch {
+            return false;
+        }
     }
 
     // ===== タイマー =====
@@ -135,149 +278,10 @@
     }
 
     function tick() {
-        STATE.elapsed += 1;
+        const prev = STATE.elapsed;
+        STATE.elapsed = prev + 1;
         render();
-        checkAlarms();
-    }
-
-    // ===== UI生成 =====
-    function makeNumberSelect(min, max) {
-        const sel = document.createElement('select');
-        sel.className = 'form-select form-select-lg d-inline-block w-auto';
-        for (let i = min; i <= max; i++) {
-            const o = document.createElement('option');
-            o.value = i;
-            o.textContent = String(i).padStart(2, '0');
-            sel.appendChild(o);
-        }
-        return sel;
-    }
-
-    // 「音 → 分・秒」順、ラベル文字なし（分・秒のみ小ラベル）
-    function createAlarmRow(init = { m: 0, s: 0, sound: '' }) {
-        const row = document.createElement('div');
-        row.className = 'alarm-row d-flex flex-wrap align-items-center gap-2';
-
-        // 音セレクト（先頭 OFF）
-        const soundSel = document.createElement('select');
-        soundSel.className = 'form-select form-select-lg sound d-inline-block w-auto';
-        const off = document.createElement('option'); off.value = ''; off.textContent = 'OFF';
-        soundSel.appendChild(off);
-        SOUND_FILES.forEach(f => {
-            const o = document.createElement('option');
-            o.value = `sounds/${f}`;   // ※ASCII対応は現状不要の要望に合わせそのまま
-            o.textContent = f;
-            soundSel.appendChild(o);
-        });
-
-        // 分・秒
-        const minSel = makeNumberSelect(0, 5);
-        const secSel = makeNumberSelect(0, 59);
-
-        const applyDisable = () => {
-            const isOff = soundSel.value === '';
-            minSel.disabled = isOff;
-            secSel.disabled = isOff;
-        };
-
-        // 削除
-        const removeBtn = document.createElement('button');
-        removeBtn.type = 'button';
-        removeBtn.textContent = '−';
-        removeBtn.className = 'remove btn btn-outline-danger btn-lg';
-        removeBtn.addEventListener('click', () => {
-            alarmsWrap.removeChild(row);
-            STATE.alarms = STATE.alarms.filter(a => a.el !== row);
-            saveAlarms();
-        });
-
-        // 「音 → 分 → '分' → 秒 → '秒' → 削除」
-        const labelMin = document.createElement('span');
-        labelMin.textContent = '分';
-        labelMin.className = 'text-secondary';
-
-        const labelSec = document.createElement('span');
-        labelSec.textContent = '秒';
-        labelSec.className = 'text-secondary';
-
-        row.append(soundSel, minSel, labelMin, secSel, labelSec, removeBtn);
-        alarmsWrap.appendChild(row);
-
-        const alarm = {
-            el: row,
-            min: minSel,
-            sec: secSel,
-            sound: soundSel
-        };
-        STATE.alarms.push(alarm);
-
-        // 初期値
-        minSel.value = String(init.m ?? 0);
-        secSel.value = String(init.s ?? 0);
-        soundSel.value = init.sound ?? '';
-        applyDisable();
-
-        // 変更で保存（音変更時は将来の再生に備えて事前ロードも可能）
-        const onChange = async () => {
-            applyDisable();
-            saveAlarms();
-            // running中に新しい音を選んだ場合でも、鳴る前にロードしておくと安心
-            if (STATE.running && soundSel.value) {
-                try { await loadSound(soundSel.value); } catch { }
-            }
-        };
-        soundSel.addEventListener('change', onChange);
-        minSel.addEventListener('change', saveAlarms);
-        secSel.addEventListener('change', saveAlarms);
-    }
-
-    // ===== 発火チェック =====
-    function checkAlarms() {
-        for (const a of STATE.alarms) {
-            if (a.sound.value === '') continue;
-            const when = (+a.min.value * 60) + (+a.sec.value);
-            if (STATE.elapsed === when && !STATE.fired.has(a)) {
-                STATE.fired.add(a);
-                // 事前ロード済みのはずだが、念のため存在しなければロードしてから再生
-                if (!BUFFERS.has(a.sound.value)) {
-                    loadSound(a.sound.value).then(() => playSound(a.sound.value)).catch(() => { });
-                } else {
-                    playSound(a.sound.value);
-                }
-            }
-        }
-    }
-
-    // ===== 保存/復元 =====
-    function saveAlarms() {
-        try {
-            const data = STATE.alarms.map(a => ({
-                m: +a.min.value,
-                s: +a.sec.value,
-                sound: a.sound.value || '' // OFFは空
-            }));
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-        } catch { }
-    }
-
-    function loadAlarms() {
-        try {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            if (!raw) return false;
-            const list = JSON.parse(raw);
-            if (!Array.isArray(list)) return false;
-
-            STATE.alarms.length = 0;
-            alarmsWrap.innerHTML = '';
-
-            for (const it of list) {
-                const m = Number(it?.m) || 0;
-                const s = Number(it?.s) || 0;
-                const snd = typeof it?.sound === 'string' ? it.sound : '';
-                createAlarmRow({ m, s, sound: snd });
-            }
-            return true;
-        } catch { return false; }
+        checkAlarms(prev, STATE.elapsed);
     }
 
     // ===== イベント =====
