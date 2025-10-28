@@ -85,9 +85,9 @@
     function buildFixedSchedule() {
         FIXED_SCHEDULE = [];
         firedNames = new Set();
-        if (SOUND_FILES[0]) FIXED_SCHEDULE.push({ t: 10, name: SOUND_FILES[0] });
+        if (SOUND_FILES[0]) FIXED_SCHEDULE.push({ t: 10, name: SOUND_FILES[2] });
         if (SOUND_FILES[1]) FIXED_SCHEDULE.push({ t: 20, name: SOUND_FILES[1] });
-        if (SOUND_FILES[2]) FIXED_SCHEDULE.push({ t: 30, name: SOUND_FILES[2] });
+        if (SOUND_FILES[2]) FIXED_SCHEDULE.push({ t: 30, name: SOUND_FILES[0] });
     }
 
     // ===== タイマー =====
