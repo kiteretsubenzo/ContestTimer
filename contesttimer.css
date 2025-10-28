@@ -1,6 +1,11 @@
 /* ===== タイマー表示 ===== */
 #time {
     color: #fff;
+    font-size: 4rem; /* ← デフォルトより大きめ（約64px） */
+    font-weight: 700; /* ← 太字で視認性アップ */
+    letter-spacing: 1px; /* ← 桁の間隔を少し広げて見やすく */
+    text-align: center; /* ← 中央寄せ（念のため明示） */
+    margin: 0.5rem 0 1rem 0; /* ← ボタンとの間に少し余白 */
 }
 
 /* 無効化されたリセットボタン */
@@ -80,6 +85,11 @@ button.remove {
     .alarm-row select.form-select {
         padding-right: .5rem;
         padding-left: .5rem;
+    }
+
+    #time {
+        font-size: 3.2rem; /* ← モバイルは少しだけ小さめ */
+        letter-spacing: 0.5px;
     }
 }
 
