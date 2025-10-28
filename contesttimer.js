@@ -218,4 +218,6 @@
     // ========= 初期状態 =========
     render();
     updateControls();
+
+    alert();
 })();
