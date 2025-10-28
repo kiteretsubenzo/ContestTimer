@@ -17,7 +17,7 @@ button.remove {
     margin-left: .5rem;
 }
 
-/* ===== アラーム行レイアウト ===== */
+/* ===== アラーム行レイアウト（統合版） ===== */
 .alarm-row {
     margin: .35rem 0;
     width: 100%;
@@ -25,14 +25,70 @@ button.remove {
     display: flex;
     justify-content: center;
     align-items: center;
+    gap: 8px;
+    flex-wrap: nowrap; /* 2行化を防ぐ */
 }
 
-    .alarm-row select {
-        margin: 0 .25rem;
+.alarm-row select {
+    margin: 0 .25rem;
+}
+
+/* すべてのセレクト：はみ出しは省略表示に */
+.alarm-row select.form-select {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis; /* 長い名前は「…」で切る */
+    min-width: 0; /* flex内で縮められるように */
+}
+
+/* 音セレクトをやや細く、分・秒を広く（デフォルト） */
+.alarm-row .sound {
+    flex: 0 1 44%;
+}
+
+.alarm-row .min {
+    flex: 0 1 28%;
+}
+
+.alarm-row .sec {
+    flex: 0 1 28%;
+}
+
+/* ===== スタート / ストップ / リセット ボタン拡大 ===== */
+#btn-start,
+#btn-stop,
+#reset {
+    font-size: 1.4rem; /* テキストを大きく */
+    padding: 0.75rem 2rem; /* 高さ・横幅を広げる */
+    border-radius: 0.6rem; /* 丸みを少し強調 */
+    min-width: 8rem; /* 幅を一定にして揃える */
+}
+
+/* iPhone縦など狭幅向けの最適化 */
+@media (max-width: 430px) {
+    .alarm-row .sound {
+        flex: 0 1 40%;
+        font-size: 0.95rem;
     }
 
-.sound {
-    min-width: 12em;
+    .alarm-row .min,
+    .alarm-row .sec {
+        flex: 0 1 30%;
+        font-size: 1rem;
+    }
+    /* さらに窮屈なら左右余白を微調整 */
+    .alarm-row select.form-select {
+        padding-right: .5rem;
+        padding-left: .5rem;
+    }
+}
+
+/* ▼（下向き矢印）を消したい場合（任意・見た目だけ） */
+.alarm-row select.form-select.no-caret {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: none !important; /* Bootstrapの▼を打ち消す */
+    padding-right: .5rem; /* 右余白を詰める */
 }
 
 /* ===== アラーム全体の構造 ===== */
