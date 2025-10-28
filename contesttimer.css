@@ -1,26 +1,15 @@
-/* タイマー文字を真っ白に */
+/* ===== タイマー表示 ===== */
 #time {
     color: #fff;
 }
 
-/* アラームヘッダーのラベルも真っ白 */
-.card-header {
-    color: #fff;
-}
-
-/* アラーム行のレイアウト */
-.alarm-row {
-    margin: .35rem 0;
-}
-
-/* セレクト間の間隔 */
-.alarm-row select {
-    margin: 0 .25rem;
-}
-
-/* 音セレクトの幅 */
-.sound {
-    min-width: 12em;
+/* 無効化されたリセットボタン */
+#reset:disabled {
+    background-color: #444 !important;
+    color: #aaa !important;
+    border-color: #555 !important;
+    cursor: not-allowed !important;
+    opacity: 1 !important;
 }
 
 /* 削除ボタン */
@@ -28,25 +17,53 @@ button.remove {
     margin-left: .5rem;
 }
 
-/* トグルボタンのラベル切替 */
-#toggle::before {
-    content: "スタート";
+/* ===== アラーム行レイアウト ===== */
+.alarm-row {
+    margin: .35rem 0;
+    width: 100%;
+    max-width: 900px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
-#toggle.running::before {
-    content: "ストップ";
+    .alarm-row select {
+        margin: 0 .25rem;
+    }
+
+.sound {
+    min-width: 12em;
 }
 
-/* リセットボタンの無効状態を強調 */
-#reset:disabled {
-    background-color: #444 !important;
-    color: #aaa !important;
-    border-color: #555 !important;
-    cursor: not-allowed !important;
-    opacity: 1 !important; /* Bootstrapの透過を打ち消す */
+/* ===== アラーム全体の構造 ===== */
+#alarm-block {
+    display: flex;
+    flex-direction: column; /* リスト → 追加ボタンの順 */
+    align-items: center;
+    gap: 8px;
 }
 
-/* クレジット控えめ */
+#alarms {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 900px;
+    gap: 8px;
+}
+
+#add-alarm {
+    align-self: center;
+}
+
+/* ===== 非表示テンプレート ===== */
+#alarm-template {
+    display: none !important;
+    visibility: hidden;
+    height: 0;
+    overflow: hidden;
+}
+
+/* ===== クレジット ===== */
 footer,
 .credits {
     color: #888;

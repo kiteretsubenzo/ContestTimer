@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>芸人タイマー</title>
+    <title>賞レースタイマー</title>
 
     <!-- iOSのホーム追加アイコン -->
     <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png">
@@ -16,50 +16,52 @@
           rel="stylesheet"
           integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
           crossorigin="anonymous">
-    <!-- あなたのCSS（最小の上書き） -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <!-- あなたのCSS -->
     <link rel="stylesheet" href="./contesttimer.css">
 </head>
-<body class="bg-dark text-light">
-    <div class="container py-3">
-        <header class="mb-3">
-            <h1 class="h4 text-center">芸人タイマー</h1>
-        </header>
+<body class="bg-dark text-light py-4">
 
-        <!-- カウント表示（文字はCSSで真っ白化） -->
-        <div class="card bg-black border-secondary mb-3">
-            <div class="card-body text-center">
-                <div id="time" class="display-4 fw-bold" aria-live="polite">-00:03</div>
-            </div>
+    <div class="container">
+        <div id="time" class="display-4 text-center mb-3">-00:03</div>
+
+        <!-- 上段：スタート＆リセット -->
+        <div class="d-flex justify-content-center mb-3 gap-2">
+            <button id="btn-start" class="btn btn-success">スタート</button>
+            <button id="btn-stop" class="btn btn-danger d-none">ストップ</button>
+            <button id="reset" class="btn btn-secondary" disabled>リセット</button>
         </div>
 
-        <!-- 操作ボタン：横並び（上へ移動） -->
-        <div class="d-flex gap-2 mb-3">
-            <button id="toggle" class="btn btn-primary btn-lg flex-fill" type="button"></button>
-            <button id="reset" class="btn btn-outline-light btn-lg flex-fill" type="button" disabled>リセット</button>
+        <!-- アラーム全体を1つのブロックで包む -->
+        <div id="alarm-block" class="mb-4 text-center">
+
+            <!-- ここに行が追加される -->
+            <div id="alarms" class="mb-3"></div>
+
+            <!-- 追加ボタン：リストの最後に配置 -->
+            <button id="add-alarm" class="btn btn-outline-primary">
+                <i class="bi bi-plus"></i> 追加
+            </button>
         </div>
 
-        <!-- アラーム -->
-        <div class="card bg-black border-secondary">
-            <div class="card-header">
-                <span class="fw-semibold">アラーム</span>
-            </div>
-
-            <!-- リスト本体 -->
-            <div class="card-body" id="alarms"></div>
-
-            <!-- 追加ボタン（下へ移動） -->
-            <div class="card-footer">
-                <div class="d-grid">
-                    <button id="add-alarm" class="btn btn-outline-primary btn-lg" type="button">＋ 追加</button>
-                </div>
-            </div>
+        <!-- 非表示テンプレート -->
+        <div id="alarm-template" class="alarm-row d-flex align-items-center justify-content-center" style="display:none;">
+            <select class="form-select sound me-2"></select>
+            <select class="form-select min me-2"></select>
+            <select class="form-select sec me-2"></select>
+            <button type="button" class="btn btn-outline-danger remove">
+                <i class="bi bi-dash"></i>
+            </button>
         </div>
 
-        <footer class="text-center text-secondary small mt-3">
-            効果音は <a class="link-secondary" href="https://www.zapsplat.com" target="_blank" rel="noopener noreferrer nofollow">ZapSplat.com</a> より取得しました。
-        </footer>
     </div>
 
-    <script src="./contesttimer.js" defer></script>
+    <footer class="text-center text-secondary small mt-3">
+        効果音は <a class="link-secondary" href="https://www.zapsplat.com" target="_blank" rel="noopener noreferrer nofollow">ZapSplat.com</a> より取得しました。
+    </footer>
+
+    <script src="soundfiles.js"></script>
+    <script src="contesttimer.js"></script>
 </body>
 </html>
