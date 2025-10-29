@@ -63,5 +63,12 @@
 
     <script src="soundfiles.js"></script>
     <script src="contesttimer.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./service_worker.js')
+                .then(() => console.log('Service Worker 登録完了'))
+                .catch(err => console.error('Service Worker 登録エラー:', err));
+        }
+    </script>
 </body>
 </html>
