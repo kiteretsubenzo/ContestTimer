@@ -25,6 +25,37 @@
     const BUFFERS = new Map(); // name -> AudioBuffer（このcontextでdecode済み）
     let scheduled = [];        // [{src, name, at}]
 
+    // ==== Screen Wake Lock ====
+    let wakeLock = null;
+    const WAKELOCK_SUPPORTED = ('wakeLock' in navigator);
+
+    async function acquireWakeLock() {
+        if (!WAKELOCK_SUPPORTED || wakeLock) return;
+        try {
+            // iOS/Android/PCのモダンブラウザ対応
+            wakeLock = await navigator.wakeLock.request('screen');
+            wakeLock.addEventListener('release', () => {
+                // OS側で解除されたときの検知（省略可）
+                wakeLock = null;
+                console.log('Wake Lock released');
+                if (document.visibilityState === 'visible' && running) acquireWakeLock();
+            });
+            console.log('Wake Lock acquired');
+        } catch (err) {
+            // 端末設定・省電力・権限などで失敗することがある（無視してOK）
+            console.warn('Wake Lock acquire failed:', err);
+        }
+    }
+
+    async function releaseWakeLock() {
+        if (!wakeLock) return;
+        try {
+            await wakeLock.release();
+        } catch (_) { /* no-op */ }
+        wakeLock = null;
+        console.log('🔓 Wake Lock manually released');
+    }
+
     // ========= ユーティリティ =========
     const fmt = (n) => {
         const sign = n < 0 ? '-' : '';
@@ -226,6 +257,9 @@
         running = true;
         updateControls();
 
+        // タイマー開始でスリープ抑止ON
+        acquireWakeLock();
+
         // AudioContext をユーザー操作中に新規作成 & resume
         if (audioCtx) {
             try { await audioCtx.close(); } catch { }
@@ -275,6 +309,9 @@
 
         running = false;
         updateControls();
+
+        // タイマー停止でスリープ抑止OFF
+        releaseWakeLock();
     }
 
     // ========= リセット =========
@@ -285,6 +322,17 @@
         render();
         updateControls();
     }
+
+    // ========= Screen Wake Lock =========
+    // タブ復帰で自動再取得（iOS Safariはタブ遷移で解除されることがある）
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && running && !wakeLock) {
+            acquireWakeLock();
+        }
+    });
+    // ページ離脱時は解放（念のため）
+    window.addEventListener('pagehide', releaseWakeLock);
+    window.addEventListener('beforeunload', releaseWakeLock);
 
     // ========= イベント =========
     addBtn.addEventListener('click', () => {
