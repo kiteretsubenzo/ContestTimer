@@ -1,6 +1,6 @@
 ﻿importScripts("./soundfiles.js"); // SOUND_FILES を読み込む
 
-const CACHE = "contesttimer-v2";    // キャッシュを確実に更新したいときはバージョンを上げる
+const CACHE = "contesttimer-v3";    // キャッシュを確実に更新したいときはバージョンを上げる
 
 const FILES = [
     "./",
@@ -11,6 +11,8 @@ const FILES = [
     "./apple-touch-icon.png",
     "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css",
     "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css",
+    "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/fonts/bootstrap-icons.woff2",
+    "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/fonts/bootstrap-icons.woff",
     // SOUND_FILES の内容を使って、音声ファイルをキャッシュ
     ...((self.SOUND_FILES || []).map(name => `./sounds/${name}.mp3`))
 ];
@@ -41,10 +43,10 @@ self.addEventListener("fetch", event => {
 
         // ① まずはCDN(jsDelivr)はキャッシュ優先（CSSやフォントを再利用）
         if (url.hostname === "cdn.jsdelivr.net") {
-            const hit = await caches.match(req);
+            const hit = await caches.match(req, { ignoreSearch: true });
             if (hit) return hit;
             try {
-                const res = await fetch(req, { mode: "no-cors" });
+                const res = await fetch(req); // ← デフォルト(CORS)でOK
                 const cache = await caches.open(CACHE);
                 cache.put(req, res.clone());
                 return res;
