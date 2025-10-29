@@ -38,7 +38,7 @@
                 // OS側で解除されたときの検知（省略可）
                 wakeLock = null;
                 console.log('Wake Lock released');
-                if (document.visibilityState === 'visible' && running) acquireWakeLock();
+                if (document.visibilityState === 'visible') acquireWakeLock();  // ← 常時に
             });
             console.log('Wake Lock acquired');
         } catch (err) {
@@ -257,9 +257,6 @@
         running = true;
         updateControls();
 
-        // タイマー開始でスリープ抑止ON
-        acquireWakeLock();
-
         // AudioContext をユーザー操作中に新規作成 & resume
         if (audioCtx) {
             try { await audioCtx.close(); } catch { }
@@ -309,9 +306,6 @@
 
         running = false;
         updateControls();
-
-        // タイマー停止でスリープ抑止OFF
-        releaseWakeLock();
     }
 
     // ========= リセット =========
@@ -326,10 +320,13 @@
     // ========= Screen Wake Lock =========
     // タブ復帰で自動再取得（iOS Safariはタブ遷移で解除されることがある）
     document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible' && running && !wakeLock) {
-            acquireWakeLock();
+        if (document.visibilityState === 'visible') {
+            if (!wakeLock) acquireWakeLock();
+        } else {
+            if (wakeLock) releaseWakeLock();
         }
     });
+
     // ページ離脱時は解放（念のため）
     window.addEventListener('pagehide', releaseWakeLock);
     window.addEventListener('beforeunload', releaseWakeLock);
@@ -342,6 +339,11 @@
     startBtn.addEventListener('click', start);
     stopBtn.addEventListener('click', stop);
     resetBtn.addEventListener('click', reset);
+
+    // ========= 初回表示時にScreen Wake Lock =========
+    if (document.visibilityState === 'visible') {
+        acquireWakeLock();
+    }
 
     // ========= 初期状態 =========
     restoreAlarmsOrDefault(); // ← 復元（無ければ1行）
