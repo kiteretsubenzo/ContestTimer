@@ -14,5 +14,5 @@ const SOUND_FILES = [
     '和太鼓2',
 ];
 
-// 他のJSファイルから参照できるようにグローバルに残す
-window.SOUND_FILES = SOUND_FILES;
+// 他のJS/Service Workerから参照できるように公開
+(function (root) { root.SOUND_FILES = SOUND_FILES; })(typeof self !== 'undefined' ? self : window);

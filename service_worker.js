@@ -1,6 +1,7 @@
-importScripts("./soundfiles.js"); // SOUND_FILES ��ǂݍ���
+﻿importScripts("./soundfiles.js"); // SOUND_FILES を読み込む
 
-const CACHE = "contesttimer-v1";
+const CACHE = "contesttimer-v1";    // キャッシュを確実に更新したいときはバージョンを上げる
+
 const FILES = [
     "./",
     "./index.html",
@@ -8,11 +9,13 @@ const FILES = [
     "./contesttimer.js",
     "./soundfiles.js",
     "./apple-touch-icon.png",
-    // SOUND_FILES �̓��e���g���āA�����t�@�C�����L���b�V��
+    "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css",
+    "https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css",
+    // SOUND_FILES の内容を使って、音声ファイルをキャッシュ
     ...((self.SOUND_FILES || []).map(name => `./sounds/${name}.mp3`))
 ];
 
-// === install: ����L���b�V���쐬 ===
+// === install: 初回キャッシュ作成 ===
 self.addEventListener("install", event => {
     event.waitUntil((async () => {
         const cache = await caches.open(CACHE);
@@ -21,7 +24,7 @@ self.addEventListener("install", event => {
     })());
 });
 
-// === activate: �Â��L���b�V���폜 ===
+// === activate: 古いキャッシュ削除 ===
 self.addEventListener("activate", event => {
     event.waitUntil((async () => {
         const keys = await caches.keys();
@@ -30,10 +33,31 @@ self.addEventListener("activate", event => {
     })());
 });
 
-// === fetch: �I�t���C�����̓L���b�V�����g�� ===
+// === fetch: オフライン時はキャッシュを使う ===
 self.addEventListener("fetch", event => {
     event.respondWith((async () => {
-        const cached = await caches.match(event.request);
-        return cached || fetch(event.request);
+        const req = event.request;
+        const url = new URL(req.url);
+
+        // ① まずはCDN(jsDelivr)はキャッシュ優先（CSSやフォントを再利用）
+        if (url.hostname === "cdn.jsdelivr.net") {
+            const hit = await caches.match(req);
+            if (hit) return hit;
+            try {
+                const res = await fetch(req, { mode: "no-cors" });
+                const cache = await caches.open(CACHE);
+                cache.put(req, res.clone());
+                return res;
+            } catch {
+                // 取れない時は既存キャッシュ（あれば）かエラー
+                const fallback = await caches.match(req);
+                if (fallback) return fallback;
+                throw new Error("offline");
+            }
+        }
+
+        // ② それ以外は従来通り：キャッシュ→ネット
+        const cached = await caches.match(req);
+        return cached || fetch(req);
     })());
 });
