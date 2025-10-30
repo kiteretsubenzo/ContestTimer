@@ -112,6 +112,18 @@
             row.remove();
             saveAlarms();
         });
+
+        // === 追加：armed + focusout（プルダウンを閉じたら必ず1回だけ試聴） ===
+        const arm = () => { selSound._armed = true; };
+        selSound.addEventListener('pointerdown', arm, { passive: true });
+        selSound.addEventListener('touchstart', arm, { passive: true });
+        selSound.addEventListener('mousedown', arm, { passive: true });
+        selSound.addEventListener('focusout', () => {
+            if (!selSound._armed) return;       // ポインタ操作で開いていない場合は無視（Tab対策）
+            selSound._armed = false;
+            const a = new Audio(`sounds/${selSound.value}.mp3`);
+            a.play().catch(() => { });
+        }, { passive: true });
     }
 
     // values: {name, min, sec} を指定すると初期値セット
