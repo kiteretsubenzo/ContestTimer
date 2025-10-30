@@ -17,7 +17,6 @@
     // ========= 状態 =========
     let running = false;
     let elapsed = -3;  // 表示用（-3 → 0 → ...）
-    let prev = -3;
     let uiTimer = null;
 
     // Web Audio
@@ -34,11 +33,11 @@
         try {
             // iOS/Android/PCのモダンブラウザ対応
             wakeLock = await navigator.wakeLock.request('screen');
+            // 走行中に強制解除されたレアケースは安全停止する
             wakeLock.addEventListener('release', () => {
-                // OS側で解除されたときの検知（省略可）
+                stop(); // ← 保険の1行：通知なしで静かに停止
                 wakeLock = null;
                 console.log('Wake Lock released');
-                if (document.visibilityState === 'visible') acquireWakeLock();  // ← 常時に
             });
             console.log('Wake Lock acquired');
         } catch (err) {
@@ -53,7 +52,7 @@
             await wakeLock.release();
         } catch (_) { /* no-op */ }
         wakeLock = null;
-        console.log('🔓 Wake Lock manually released');
+        console.log('Wake Lock manually released');
     }
 
     // ========= ユーティリティ =========
@@ -246,7 +245,6 @@
 
     // ========= タイマー（UI表示のみ） =========
     function tick() {
-        prev = elapsed;
         elapsed += 1;
         render();
     }
@@ -256,6 +254,9 @@
         if (running) return;
         running = true;
         updateControls();
+
+        // Wake Lock を試行 → 結果に関わらずタイマーは開始
+        acquireWakeLock(); // 非同期で試行（awaitしない）
 
         // AudioContext をユーザー操作中に新規作成 & resume
         if (audioCtx) {
@@ -286,7 +287,6 @@
         }
 
         // UIタイマー開始（表示のみ）
-        prev = elapsed;
         uiTimer = setInterval(tick, 1000);
     }
 
@@ -306,30 +306,18 @@
 
         running = false;
         updateControls();
+
+        // 停止時は必ず解放（冪等）
+        releaseWakeLock();
     }
 
     // ========= リセット =========
     function reset() {
         if (running) return;
         elapsed = -3;
-        prev = -3;
         render();
         updateControls();
     }
-
-    // ========= Screen Wake Lock =========
-    // タブ復帰で自動再取得（iOS Safariはタブ遷移で解除されることがある）
-    document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') {
-            if (!wakeLock) acquireWakeLock();
-        } else {
-            if (wakeLock) releaseWakeLock();
-        }
-    });
-
-    // ページ離脱時は解放（念のため）
-    window.addEventListener('pagehide', releaseWakeLock);
-    window.addEventListener('beforeunload', releaseWakeLock);
 
     // ========= イベント =========
     addBtn.addEventListener('click', () => {
@@ -339,11 +327,6 @@
     startBtn.addEventListener('click', start);
     stopBtn.addEventListener('click', stop);
     resetBtn.addEventListener('click', reset);
-
-    // ========= 初回表示時にWake Lock =========
-    if (document.visibilityState === 'visible') {
-        acquireWakeLock();
-    }
 
     // ===== Wake Lock デバッグ表示（完全独立・0.5sポーリング） =====
     (() => {
@@ -361,10 +344,8 @@
             // アイコンを切り替え（lock / unlock）
             if (active) {
                 icon.className = 'bi bi-lock';     // 🔒
-                icon.setAttribute('title', 'Wake Lock: ON');
             } else {
                 icon.className = 'bi bi-unlock';   // 🔓
-                icon.setAttribute('title', 'Wake Lock: OFF');
             }
         }, 500);
     })();
