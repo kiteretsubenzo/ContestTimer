@@ -121,6 +121,22 @@ button.remove {
     align-self: center;
 }
 
+/* ===== Wake Lock デバッグ表示（右上・独立） ===== */
+.wl-indicator {
+    position: fixed;
+    top: 8px;
+    right: 10px;
+    z-index: 2000;
+    font-size: 22px;
+    line-height: 1;
+    opacity: 0.8;
+    pointer-events: none; /* クリックを邪魔しない */
+}
+
+.wl-indicator .bi {
+    vertical-align: middle;
+}
+
 /* ===== 非表示テンプレート ===== */
 #alarm-template {
     display: none !important;

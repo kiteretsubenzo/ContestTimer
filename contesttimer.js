@@ -340,10 +340,34 @@
     stopBtn.addEventListener('click', stop);
     resetBtn.addEventListener('click', reset);
 
-    // ========= 初回表示時にScreen Wake Lock =========
+    // ========= 初回表示時にWake Lock =========
     if (document.visibilityState === 'visible') {
         acquireWakeLock();
     }
+
+    // ===== Wake Lock デバッグ表示（完全独立・0.5sポーリング） =====
+    (() => {
+        const el = document.getElementById('wakelock-indicator');
+        if (!el) return; // 要素が無ければ何もしない
+
+        const icon = el.querySelector('.bi');
+
+        // contesttimer.js 内の wakeLock（WakeLockSentinel|null）を“読むだけ”
+        // ここでは取得/解放などの操作は一切行わない
+        setInterval(() => {
+            // active: sentinelが存在し、かつ releasedでないとき
+            const active = !!(typeof wakeLock !== 'undefined' && wakeLock && !wakeLock.released);
+
+            // アイコンを切り替え（lock / unlock）
+            if (active) {
+                icon.className = 'bi bi-lock';     // 🔒
+                icon.setAttribute('title', 'Wake Lock: ON');
+            } else {
+                icon.className = 'bi bi-unlock';   // 🔓
+                icon.setAttribute('title', 'Wake Lock: OFF');
+            }
+        }, 500);
+    })();
 
     // ========= 初期状態 =========
     restoreAlarmsOrDefault(); // ← 復元（無ければ1行）
