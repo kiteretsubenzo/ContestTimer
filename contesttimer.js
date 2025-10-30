@@ -276,6 +276,7 @@
         }
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         try { await audioCtx.resume(); } catch { }
+        BUFFERS.clear(); // ← これを追加（コンテキストを跨ぐバッファは使わない）
 
         // リストからスケジュールを取得
         const items = collectScheduleFromList(); // [{name, atSec}, ...]
