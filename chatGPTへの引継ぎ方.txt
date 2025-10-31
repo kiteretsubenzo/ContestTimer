@@ -1,0 +1,2 @@
+﻿このプロジェクトの続きです。ai_context.jsonを展開してください
+というプロンプトと共に、html、js、cssとai_context.jsonを添付する
