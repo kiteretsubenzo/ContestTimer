@@ -63,6 +63,7 @@
     </div>
 
     <footer class="text-center text-secondary small mt-3">
+        <span id="cache-version"></span>
         効果音は <a class="link-secondary" href="https://www.zapsplat.com" target="_blank" rel="noopener noreferrer nofollow">ZapSplat.com</a> より取得しました。
     </footer>
 
@@ -74,6 +75,30 @@
                 .then(() => console.log('Service Worker 登録完了'))
                 .catch(err => console.error('Service Worker 登録エラー:', err));
         }
+
+        // 受信してバージョンをfooterへ表示
+        navigator.serviceWorker.addEventListener('message', (event) => {
+            if (event.data?.type === 'CACHE_VERSION') {
+                const el = document.getElementById('cache-version') || (() => {
+                    // 念のため無ければ作る（保険）
+                    const footer = document.querySelector('footer') || document.body;
+                    const br = document.createElement('br');
+                    const span = document.createElement('span');
+                    span.id = 'cache-version';
+                    footer.append(br, span);
+                    return span;
+                })();
+                el.textContent = `Cache: ${event.data.value}`;
+            }
+        });
+
+        // 起動直後に SW へ問い合わせ（GET_VERSION）
+        (async () => {
+            // ready で active SW を取得
+            const reg = await navigator.serviceWorker.ready;
+            (navigator.serviceWorker.controller || reg.active)
+                ?.postMessage({ type: 'GET_VERSION' });
+        })();
     </script>
 </body>
 </html>
