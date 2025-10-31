@@ -1,6 +1,6 @@
 ﻿importScripts("./soundfiles.js"); // SOUND_FILES を読み込む
 
-const CACHE = "contesttimer-v8";    // キャッシュを確実に更新したいときはバージョンを上げる
+const CACHE = "contesttimer-v9";    // キャッシュを確実に更新したいときはバージョンを上げる
 
 const FILES = [
     "./",
@@ -32,6 +32,20 @@ self.addEventListener("activate", event => {
         const keys = await caches.keys();
         await Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)));
         await self.clients.claim();
+    })());
+});
+
+self.addEventListener("activate", event => {
+    event.waitUntil((async () => {
+        const keys = await caches.keys();
+        await Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)));
+        await self.clients.claim();
+
+        // ここで全ページに CACHE を送信
+        const clientsList = await self.clients.matchAll();
+        for (const client of clientsList) {
+            client.postMessage({ cacheVersion: CACHE });
+        }
     })());
 });
 
