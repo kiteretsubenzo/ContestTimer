@@ -1,6 +1,6 @@
 ﻿importScripts("./soundfiles.js"); // SOUND_FILES を読み込む
 
-const CACHE = "contesttimer-v18";    // キャッシュを確実に更新したいときはバージョンを上げる
+const CACHE = "contesttimer-v19";    // キャッシュを確実に更新したいときはバージョンを上げる
 
 const FILES = [
     "./",
@@ -77,7 +77,7 @@ self.addEventListener("fetch", event => {
         if (isAppShell) {
             try {
                 // ブラウザHTTPキャッシュも避けたいときは cache:'no-store' でもOK
-                const fresh = await fetch(req);
+                const fresh = await fetch(new Request(req, { cache: 'no-store' }));
                 const cache = await caches.open(CACHE);
                 cache.put(req, fresh.clone());
                 return fresh;
