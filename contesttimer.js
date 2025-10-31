@@ -122,34 +122,34 @@
             row.remove();
             saveAlarms();
         });
-    }
 
-    // --- 試聴（armed + change/blur/focusout のどれか一度で再生） ---
-    let armed = false, fired = false;
-    const arm = () => { armed = true; fired = false; };
-    const previewOnce = async () => {
-        if (!armed || fired) return;
-        fired = true; armed = false;
-        try {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+        // --- 試聴（armed + change/blur/focusout のどれか一度で再生） ---
+        let armed = false, fired = false;
+        const arm = () => { armed = true; fired = false; };
+        const previewOnce = async () => {
+            if (!armed || fired) return;
+            fired = true; armed = false;
+            try {
+                if (!audioCtx) {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+                }
+                try { await audioCtx.resume(); } catch { }
+                const name = selSound.value;
+                await ensureBuffer(name);
+                // value更新タイミング差を吸収（iOS対策）
+                requestAnimationFrame(() => playNow(name));
+            } catch (e) {
+                console.warn('preview failed:', e);
             }
-            try { await audioCtx.resume(); } catch { }
-            const name = selSound.value;
-            await ensureBuffer(name);
-            // value更新タイミング差を吸収（iOS対策）
-            requestAnimationFrame(() => playNow(name));
-        } catch (e) {
-            console.warn('preview failed:', e);
-        }
-    };
-    // 操作開始でarm（iOS/PC両対応）
-    selSound.addEventListener('pointerdown', arm, { passive: true });
-    selSound.addEventListener('focusin', arm);
-    // いずれかが来たら一度だけ再生
-    selSound.addEventListener('change', previewOnce);
-    selSound.addEventListener('blur', previewOnce);
-    selSound.addEventListener('focusout', previewOnce);
+        };
+        // 操作開始で arm（iOS/PC）
+        selSound.addEventListener('pointerdown', arm, { passive: true });
+        selSound.addEventListener('focusin', arm);
+        // いずれかが来たら一度だけ再生
+        selSound.addEventListener('change', previewOnce);
+        selSound.addEventListener('blur', previewOnce);
+        selSound.addEventListener('focusout', previewOnce);
+    }
 
     function createAlarmRow(values = null) {
         const clone = template.cloneNode(true);
