@@ -1,6 +1,6 @@
 ﻿importScripts("./soundfiles.js"); // SOUND_FILES を読み込む
 
-const CACHE = "contesttimer-v22";    // キャッシュを確実に更新したいときはバージョンを上げる
+const CACHE = "contesttimer-v23";    // キャッシュを確実に更新したいときはバージョンを上げる
 
 const FILES = [
     "./",

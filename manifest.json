@@ -1,11 +1,11 @@
 ﻿{
-	"name": "ContestTimer",
-	"short_name": "Timer",
+	"name": "賞レースタイマー",
+	"short_name": "賞レースタイマー",
 	"start_url": "./",
 	"display": "standalone",
 	"background_color": "#1a1d21",
 	"theme_color": "#1a1d21",
-	"description": "Contest Timer for performance timing and alarms.",
+	"description": "賞レース用タイマー",
 	"icons": [
 		{
 			"src": "apple-touch-icon.png",
