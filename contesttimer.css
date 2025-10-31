@@ -1,11 +1,11 @@
 /* ===== タイマー表示 ===== */
 #time {
     color: #fff;
-    font-size: 4rem; /* ← デフォルトより大きめ（約64px） */
-    font-weight: 700; /* ← 太字で視認性アップ */
-    letter-spacing: 1px; /* ← 桁の間隔を少し広げて見やすく */
-    text-align: center; /* ← 中央寄せ（念のため明示） */
-    margin: 0.5rem 0 1rem 0; /* ← ボタンとの間に少し余白 */
+    font-size: 4rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-align: center;
+    margin: 0.5rem 0 1rem 0;
 }
 
 /* 無効化されたリセットボタン */
@@ -22,7 +22,7 @@ button.remove {
     margin-left: .5rem;
 }
 
-/* ===== アラーム行レイアウト（統合版） ===== */
+/* ===== アラーム行レイアウト ===== */
 .alarm-row {
     margin: .35rem 0;
     width: 100%;
@@ -31,45 +31,43 @@ button.remove {
     justify-content: center;
     align-items: center;
     gap: 8px;
-    flex-wrap: nowrap; /* 2行化を防ぐ */
+    flex-wrap: nowrap;
 }
 
-.alarm-row select {
-    margin: 0 .25rem;
+    .alarm-row select {
+        margin: 0 .25rem;
+    }
+
+        /* セレクトの省略表示 */
+        .alarm-row select.form-select {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-width: 0;
+        }
+
+    /* 音セレクトは細め・分秒は広め */
+    .alarm-row .sound {
+        flex: 0 1 44%;
+    }
+
+    .alarm-row .min {
+        flex: 0 1 28%;
+    }
+
+    .alarm-row .sec {
+        flex: 0 1 28%;
+    }
+
+/* ===== スタート/ストップ/リセット ===== */
+#btn-start, #btn-stop, #reset {
+    font-size: 1.4rem;
+    padding: 0.75rem 2rem;
+    border-radius: 0.6rem;
+    min-width: 8rem;
 }
 
-/* すべてのセレクト：はみ出しは省略表示に */
-.alarm-row select.form-select {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis; /* 長い名前は「…」で切る */
-    min-width: 0; /* flex内で縮められるように */
-}
-
-/* 音セレクトをやや細く、分・秒を広く（デフォルト） */
-.alarm-row .sound {
-    flex: 0 1 44%;
-}
-
-.alarm-row .min {
-    flex: 0 1 28%;
-}
-
-.alarm-row .sec {
-    flex: 0 1 28%;
-}
-
-/* ===== スタート / ストップ / リセット ボタン拡大 ===== */
-#btn-start,
-#btn-stop,
-#reset {
-    font-size: 1.4rem; /* テキストを大きく */
-    padding: 0.75rem 2rem; /* 高さ・横幅を広げる */
-    border-radius: 0.6rem; /* 丸みを少し強調 */
-    min-width: 8rem; /* 幅を一定にして揃える */
-}
-
-/* iPhone縦など狭幅向けの最適化 */
+/* iPhone縦など狭幅向け */
 @media (max-width: 430px) {
     .alarm-row .sound {
         flex: 0 1 40%;
@@ -81,30 +79,30 @@ button.remove {
         flex: 0 1 30%;
         font-size: 1rem;
     }
-    /* さらに窮屈なら左右余白を微調整 */
+
     .alarm-row select.form-select {
         padding-right: .5rem;
         padding-left: .5rem;
     }
 
     #time {
-        font-size: 3.2rem; /* ← モバイルは少しだけ小さめ */
+        font-size: 3.2rem;
         letter-spacing: 0.5px;
     }
 }
 
-/* ▼（下向き矢印）を消したい場合（任意・見た目だけ） */
+/* ▼（下向き矢印）を消す（任意・見た目だけ） */
 .alarm-row select.form-select.no-caret {
     appearance: none;
     -webkit-appearance: none;
-    background-image: none !important; /* Bootstrapの▼を打ち消す */
-    padding-right: .5rem; /* 右余白を詰める */
+    background-image: none !important;
+    padding-right: .5rem;
 }
 
 /* ===== アラーム全体の構造 ===== */
 #alarm-block {
     display: flex;
-    flex-direction: column; /* リスト → 追加ボタンの順 */
+    flex-direction: column;
     align-items: center;
     gap: 8px;
 }
@@ -121,7 +119,7 @@ button.remove {
     align-self: center;
 }
 
-/* ===== Wake Lock デバッグ表示（右上・独立） ===== */
+/* ===== Wake Lock デバッグ表示 ===== */
 .wl-indicator {
     position: fixed;
     top: 8px;
@@ -130,12 +128,12 @@ button.remove {
     font-size: 22px;
     line-height: 1;
     opacity: 0.8;
-    pointer-events: none; /* クリックを邪魔しない */
+    pointer-events: none;
 }
 
-.wl-indicator .bi {
-    vertical-align: middle;
-}
+    .wl-indicator .bi {
+        vertical-align: middle;
+    }
 
 /* ===== 非表示テンプレート ===== */
 #alarm-template {
@@ -145,9 +143,8 @@ button.remove {
     overflow: hidden;
 }
 
-/* ===== クレジット ===== */
-footer,
-.credits {
+/* ===== フッター（統一） ===== */
+footer {
     color: #888;
 }
 

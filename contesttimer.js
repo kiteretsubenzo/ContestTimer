@@ -10,46 +10,44 @@
     const template = document.getElementById('alarm-template');
 
     // ========= 設定 =========
-    const NAMES = window.SOUND_FILES || [];  // 例: ['アラーム','ベル1',...]
-    const toUrl = (name) => `sounds/${name}.mp3`; // 日本語名そのまま
-    const LS_KEY = 'contesttimer.alarms.v1';       // ← 保存キー
+    // 音名リスト（soundfiles.js で定義）
+    const NAMES = window.SOUND_FILES || [];
+    // 音ファイルの場所（日本語名そのまま -> sounds/<name>.mp3）
+    const toUrl = (name) => `sounds/${name}.mp3`;
+    // アラーム行の保存キー
+    const LS_KEY = 'contesttimer.alarms.v1';
 
     // ========= 状態 =========
-    let running = false;
+    let running = false;            // 動作中フラグ
+    let elapsedSecDisplay = -3;     // 画面表示の整数秒（-3 → 0 → …）
 
-    // 表示用の整数秒（-3 → 0 → ...）。resetで -3 に戻す
-    let elapsedSecDisplay = -3;
-
-    // ===== 単一クロック（AudioContext） =====
-    // ・audioStartSec: Startボタンを押した瞬間の audioCtx.currentTime（秒）
-    // ・startOffsetSec: Start時点の表示ベース（再開時はその時の elapsedSecDisplay が入る）
-    // ・pausedAccumSec: Pause運用があれば加算するが、今回は Stop/Start 方式なので常に 0
+    // ===== 単一クロック（AudioContext.currentTime） =====
+    // ・audioStartSec: Start を押した瞬間の currentTime（秒）
+    // ・startOffsetSec: Start時点の表示ベース（再開時は当時の表示から）
     let audioCtx = null;
     let audioStartSec = 0;
     let startOffsetSec = -3;
-    let pausedAccumSec = 0;
 
-    // 高速UI更新（100ms）用タイマー
+    // 100ms UI更新タイマー
     let uiTimer = null;
 
-    // AudioBuffers
-    const BUFFERS = new Map(); // name -> AudioBuffer（このcontextでdecode済み）
+    // 読み込み済み AudioBuffer
+    const BUFFERS = new Map(); // name -> AudioBuffer
 
-    // 発火済イベントの管理（過去発火の再発防止）
-    // 例: firedSet.has( "name@sec" )
-    const firedSet = new Set();
+    // 「過去に鳴らした（再発火防止）」管理
+    const firedSet = new Set(); // e.g. "ベル1@30"
 
     // ==== Screen Wake Lock ====
     let wakeLock = null;
     const WAKELOCK_SUPPORTED = ('wakeLock' in navigator);
 
+    /** 画面消灯抑止（取得できたらOK、解除は安全停止に寄せる） */
     async function acquireWakeLock() {
         if (!WAKELOCK_SUPPORTED || wakeLock) return;
         try {
             wakeLock = await navigator.wakeLock.request('screen');
-            // OS都合の解除は安全停止（通知なし）
             wakeLock.addEventListener('release', () => {
-                stop();
+                stop(); // OS都合で切れたら停止（通知なし）
                 wakeLock = null;
                 console.log('Wake Lock released');
             });
@@ -59,6 +57,7 @@
         }
     }
 
+    /** 画面消灯抑止の明示解放（冪等） */
     async function releaseWakeLock() {
         if (!wakeLock) return;
         try { await wakeLock.release(); } catch { }
@@ -67,6 +66,8 @@
     }
 
     // ========= ユーティリティ =========
+
+    /** 秒（整数）→ mm:ss or -mm:ss */
     const fmt = (n) => {
         const sign = n < 0 ? '-' : '';
         const abs = Math.abs(n);
@@ -75,17 +76,21 @@
         return `${sign}${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     };
 
+    /** 表示の再描画 */
     function render() {
         timeEl.textContent = fmt(elapsedSecDisplay);
     }
 
+    /** ボタンの活性/非活性切り替え */
     function updateControls() {
         startBtn.classList.toggle('d-none', running);
         stopBtn.classList.toggle('d-none', !running);
         resetBtn.disabled = running || elapsedSecDisplay === -3;
     }
 
-    // ========= リスト行の生成（テンプレート方式） =========
+    // ========= アラーム行の生成・編集 =========
+
+    /** セレクトに 0..max を注入 */
     function fillSelect(sel, max) {
         sel.innerHTML = '';
         for (let i = 0; i <= max; i++) {
@@ -96,6 +101,7 @@
         }
     }
 
+    /** 音セレクトに NAMES を注入 */
     function fillSoundSelect(sel) {
         sel.innerHTML = '';
         for (const name of NAMES) {
@@ -107,25 +113,29 @@
         if (NAMES.length > 0) sel.value = NAMES[0];
     }
 
+    /** 行にイベントを付与（保存・削除・試聴） */
     function attachRowHandlers(row) {
         const selSound = row.querySelector('.sound');
         const selMin = row.querySelector('.min');
         const selSec = row.querySelector('.sec');
         const btnDel = row.querySelector('.remove');
 
+        // 値変更で保存
         const onChange = () => saveAlarms();
         selSound.addEventListener('change', onChange);
         selMin.addEventListener('change', onChange);
         selSec.addEventListener('change', onChange);
 
+        // 行削除
         btnDel.addEventListener('click', () => {
             row.remove();
             saveAlarms();
         });
 
-        // --- 試聴（armed + change/blur/focusout のどれか一度で再生） ---
+        // --- 試聴：armed + change/blur/focusout のどれか1回で再生 ---
         let armed = false, fired = false;
         const arm = () => { armed = true; fired = false; };
+
         const previewOnce = async () => {
             if (!armed || fired) return;
             fired = true; armed = false;
@@ -136,21 +146,21 @@
                 try { await audioCtx.resume(); } catch { }
                 const name = selSound.value;
                 await ensureBuffer(name);
-                // value更新タイミング差を吸収（iOS対策）
+                // iOS の値反映タイミングに合わせる
                 requestAnimationFrame(() => playNow(name));
             } catch (e) {
                 console.warn('preview failed:', e);
             }
         };
-        // 操作開始で arm（iOS/PC）
+
         selSound.addEventListener('pointerdown', arm, { passive: true });
         selSound.addEventListener('focusin', arm);
-        // いずれかが来たら一度だけ再生
         selSound.addEventListener('change', previewOnce);
         selSound.addEventListener('blur', previewOnce);
         selSound.addEventListener('focusout', previewOnce);
     }
 
+    /** 新しい行を作成して追加（オプションで初期値あり） */
     function createAlarmRow(values = null) {
         const clone = template.cloneNode(true);
         clone.style.display = '';
@@ -175,7 +185,9 @@
         return clone;
     }
 
-    // ========= localStorage 永続化 =========
+    // ========= 永続化（localStorage） =========
+
+    /** 画面上の行を配列へスナップショット */
     function snapshotAlarms() {
         const list = [];
         alarmsWrap.querySelectorAll('.alarm-row').forEach(row => {
@@ -194,6 +206,7 @@
         return list;
     }
 
+    /** 保存 */
     function saveAlarms() {
         try {
             const data = snapshotAlarms();
@@ -203,18 +216,19 @@
         }
     }
 
+    /** 読み込み */
     function loadAlarms() {
         try {
             const raw = localStorage.getItem(LS_KEY);
             if (!raw) return null;
             const data = JSON.parse(raw);
-            if (!Array.isArray(data)) return null;
-            return data;
+            return Array.isArray(data) ? data : null;
         } catch {
             return null;
         }
     }
 
+    /** 初期復元（保存がなければデフォルト1行） */
     function restoreAlarmsOrDefault() {
         const data = loadAlarms();
         if (data && data.length) {
@@ -229,7 +243,9 @@
         }
     }
 
-    // ========= アラームの“発火トリガー”収集（UI -> [{name, atSec}]）=========
+    // ========= トリガー収集（UI -> [{name, atSec}]） =========
+
+    /** 今ある行から「いつ何を鳴らすか」の配列を得る */
     function collectAlarmTriggers() {
         return Array.from(alarmsWrap.querySelectorAll('.alarm-row'))
             .map(row => {
@@ -243,11 +259,13 @@
             .sort((a, b) => a.atSec - b.atSec);
     }
 
-    // ========= Audio 読み込み（同一 context で decode） =========
+    // ========= Audio =========
+
+    /** 指定名の AudioBuffer を用意（SWのオフラインキャッシュ前提） */
     async function ensureBuffer(name) {
         if (BUFFERS.has(name)) return BUFFERS.get(name);
-        // SWキャッシュにヒットするので offline 前提でもOK
-        const res = await fetch(toUrl(name), { cache: 'reload' });
+        // NOTE: fetch の cache 指定は行わない（SW が面倒を見る）
+        const res = await fetch(toUrl(name));
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const arr = await res.arrayBuffer();
         const buf = await audioCtx.decodeAudioData(arr);
@@ -255,7 +273,7 @@
         return buf;
     }
 
-    // ========= 即時鳴動（start(0)） =========
+    /** その場で即時再生（排他/停止は実装しない方針） */
     function playNow(name) {
         const buf = BUFFERS.get(name);
         if (!buf) return;
@@ -263,39 +281,41 @@
         src.buffer = buf;
         src.connect(audioCtx.destination);
         try { src.start(0); } catch (e) { console.warn('playNow failed:', name, e); }
-        // 停止や排他は実装しない（方針通り）
     }
 
-    // ========= 単一クロックに基づく now 秒（整数） =========
+    // ========= 単一クロックに基づく「今の整数秒」 =========
+
+    /** 現在の経過秒（整数）＝ startOffsetSec + (currentTime - audioStartSec) */
     function nowElapsedSec() {
         if (!audioCtx) return elapsedSecDisplay;
-        const precise = (audioCtx.currentTime - audioStartSec) - pausedAccumSec; // 秒
+        const precise = (audioCtx.currentTime - audioStartSec); // 秒
         return Math.floor(startOffsetSec + precise);
     }
 
-    // ========= 100ms表示・発火ループ =========
-    function loop100ms(scheduleItems) {
+    // ========= 100ms ループ（表示＆境界即時発火） =========
+
+    /** 100ms ごとに表示更新＆「prev < at ≤ now」判定で即時鳴動 */
+    function loop100ms(triggers) {
         let prev = nowElapsedSec();
 
-        // 内部ループ
         function onTick() {
             if (!running) return;
 
             const now = nowElapsedSec();
 
-            // 表示更新（整数秒が進んだタイミングだけでもよいが、毎tickでも軽い）
+            // 表示更新（整数秒が進んだとき）
             if (now !== elapsedSecDisplay) {
                 elapsedSecDisplay = now;
                 render();
                 updateControls();
             }
 
-            // 「prev < atSec ≤ now」を満たすイベントを即時発火
-            if (now > prev && scheduleItems && scheduleItems.length) {
-                for (const { name, atSec } of scheduleItems) {
+            // 境界を跨いだトリガーを即時発火
+            if (now > prev && triggers && triggers.length) {
+                for (const { name, atSec } of triggers) {
                     if (atSec <= prev || atSec > now) continue;
                     const key = `${name}@${atSec}`;
-                    if (firedSet.has(key)) continue; // 既に一度鳴っていればスキップ
+                    if (firedSet.has(key)) continue; // 再発火防止
                     playNow(name);
                     firedSet.add(key);
                 }
@@ -304,82 +324,70 @@
             prev = now;
         }
 
-        // 100msごとに実行
         uiTimer = setInterval(onTick, 100);
     }
 
-    // ========= 開始（Start） =========
+    // ========= Start/Stop/Reset =========
+
+    /** Start：AudioContext 作成→基準時刻を確定→必要音をデコード→ループ開始 */
     async function start() {
         if (running) return;
         running = true;
         updateControls();
 
-        acquireWakeLock(); // 非同期試行
+        acquireWakeLock(); // 非同期
 
-        // AudioContext をユーザー操作中に新規作成＆resume
+        // AudioContext は毎回作成（端末状態の揺れを避ける）
         if (audioCtx) {
             try { await audioCtx.close(); } catch { }
         }
         audioCtx = new (window.AudioContext || window.webkitAudioContext)({
-            latencyHint: 'interactive' // 小さめの出力バッファを選びやすい
+            latencyHint: 'interactive'
         });
         try { await audioCtx.resume(); } catch { }
 
-        // Start時点のオフセット（再開時は当時の値から続き）
+        // 基準確定（再開なら当時の表示から続き）
         startOffsetSec = elapsedSecDisplay;
-        pausedAccumSec = 0;
         audioStartSec = audioCtx.currentTime;
 
-        // スケジュール生成＆必要音のdecode
-        const triggers = collectAlarmTriggers(); // [{name, atSec}, ...]
+        // トリガー収集 → 必要な音だけまとめて decode
+        const triggers = collectAlarmTriggers();
         const uniqueNames = Array.from(new Set(triggers.map(t => t.name)));
-
         for (const name of uniqueNames) {
             try { await ensureBuffer(name); } catch (e) { console.warn('decode failed:', name, e); }
         }
 
-        // 100msループ開始（表示＆境界即時発火）
+        // 100ms ループ開始
         loop100ms(triggers);
     }
 
-    // ========= 停止（Stop） =========
+    /** Stop：ループ停止・WakeLock解放（表示値と firedSet は維持） */
     function stop() {
         if (!running) return;
-
         clearInterval(uiTimer);
         uiTimer = null;
-
         running = false;
         updateControls();
-
-        // Wake Lockは冪等解放
         releaseWakeLock();
-        // ここでは elapsedSecDisplay は保持（再開で続きから）
-        // firedSet は保持（過去を再発火させないため）
     }
 
-    // ========= リセット =========
+    /** Reset：ゼロからやり直し（表示=-3、発火履歴クリア） */
     function reset() {
         if (running) return;
         elapsedSecDisplay = -3;
         startOffsetSec = -3;
-        pausedAccumSec = 0;
-        // 「過去発火の再発防止」を解く（ゼロからやり直し）
         firedSet.clear();
         render();
         updateControls();
     }
 
-    // ========= イベント =========
-    addBtn.addEventListener('click', () => {
-        createAlarmRow();
-        saveAlarms();
-    });
+    // ========= UIイベント =========
+    addBtn.addEventListener('click', () => { createAlarmRow(); saveAlarms(); });
     startBtn.addEventListener('click', start);
     stopBtn.addEventListener('click', stop);
     resetBtn.addEventListener('click', reset);
 
-    // ===== Wake Lock デバッグ表示（右上・0.5sポーリング） =====
+    // ===== Wake Lock デバッグ表示（右上 0.5sポーリング） =====
     (() => {
         const el = document.getElementById('wakelock-indicator');
         if (!el) return;
@@ -390,7 +398,7 @@
         }, 500);
     })();
 
-    // ========= 初期状態 =========
+    // ========= 初期化 =========
     restoreAlarmsOrDefault();
     render();
     updateControls();
