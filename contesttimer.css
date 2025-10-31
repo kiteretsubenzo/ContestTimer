@@ -150,3 +150,8 @@ footer,
 .credits {
     color: #888;
 }
+
+#cache-version {
+    display: block;
+    margin-bottom: .25rem;
+}
