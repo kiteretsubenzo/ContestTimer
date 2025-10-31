@@ -152,3 +152,10 @@ footer {
     display: block;
     margin-bottom: .25rem;
 }
+
+/* タイマー動作中のアラーム編集禁止状態 */
+#alarm-block.is-readonly {
+    pointer-events: none;
+    opacity: .6; /* 情報見えるけど触れない雰囲気  */
+    cursor: not-allowed;
+}

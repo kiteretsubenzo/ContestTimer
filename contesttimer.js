@@ -16,6 +16,8 @@
     const toUrl = (name) => `sounds/${name}.mp3`;
     // アラーム行の保存キー
     const LS_KEY = 'contesttimer.alarms.v1';
+    // タイマー作動中に操作不可になる項目
+    const alarmBlock = document.getElementById('alarm-block');
 
     // ========= 状態 =========
     let running = false;            // 動作中フラグ
@@ -86,6 +88,8 @@
         startBtn.classList.toggle('d-none', running);
         stopBtn.classList.toggle('d-none', !running);
         resetBtn.disabled = running || elapsedSecDisplay === -3;
+
+        alarmBlock.classList.toggle('is-readonly', running);
     }
 
     // ========= アラーム行の生成・編集 =========
