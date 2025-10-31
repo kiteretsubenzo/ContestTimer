@@ -124,32 +124,32 @@
         });
     }
 
-    // --- 試聴（armed + focusout 最小差分） ---
-    let armed = false;
-    // セレクト操作開始を検出（iOS/PCどちらも拾えるように2系統）
-    selSound.addEventListener('pointerdown', () => { armed = true; }, { passive: true });
-    selSound.addEventListener('focusin', () => { armed = true; });
-
-    // セレクトが閉じたら（フォーカス喪失）必ず1回だけ再生
-    selSound.addEventListener('focusout', async () => {
-        if (!armed) return;
-        armed = false;
+    // --- 試聴（armed + change/blur/focusout のどれか一度で再生） ---
+    let armed = false, fired = false;
+    const arm = () => { armed = true; fired = false; };
+    const previewOnce = async () => {
+        if (!armed || fired) return;
+        fired = true; armed = false;
         try {
-            // WebAudio 準備（未作成 or 一時サスペンドでもOK）
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
-                await audioCtx.resume();
-            } else {
-                try { await audioCtx.resume(); } catch { }
             }
-            // 音源確保 → 即時鳴動（重ね鳴りOK方針）
+            try { await audioCtx.resume(); } catch { }
             const name = selSound.value;
             await ensureBuffer(name);
-            playNow(name);
+            // value更新タイミング差を吸収（iOS対策）
+            requestAnimationFrame(() => playNow(name));
         } catch (e) {
             console.warn('preview failed:', e);
         }
-    });
+    };
+    // 操作開始でarm（iOS/PC両対応）
+    selSound.addEventListener('pointerdown', arm, { passive: true });
+    selSound.addEventListener('focusin', arm);
+    // いずれかが来たら一度だけ再生
+    selSound.addEventListener('change', previewOnce);
+    selSound.addEventListener('blur', previewOnce);
+    selSound.addEventListener('focusout', previewOnce);
 
     function createAlarmRow(values = null) {
         const clone = template.cloneNode(true);
