@@ -350,16 +350,6 @@
         }, 500);
     })();
     
-    // service workerのバージョンをフッターに表示
-    navigator.serviceWorker.addEventListener('message', (event) => {
-        console.log('test');
-        const v = event.data?.cacheVersion;
-        if (v) {
-            const el = document.getElementById("cache-version");
-            if (el) el.textContent = `Cache: ${v}`;
-        }
-    });
-    
     // ========= 初期状態 =========
     restoreAlarmsOrDefault(); // ← 復元（無ければ1行）
     render();
