@@ -1,6 +1,6 @@
 ﻿importScripts("./soundfiles.js"); // SOUND_FILES を読み込む
 
-const CACHE = "contesttimer-v15";    // キャッシュを確実に更新したいときはバージョンを上げる
+const CACHE = "contesttimer-v16";    // キャッシュを確実に更新したいときはバージョンを上げる
 
 const FILES = [
     "./",
@@ -58,8 +58,33 @@ self.addEventListener("fetch", event => {
             }
         }
 
-        // ② それ以外は従来通り：キャッシュ→ネット
+        // ② アプリ本体の HTML/JS/CSS はネット優先（更新を反映しやすくする）
+        const sameOrigin = url.origin === self.location.origin;
+        const isAppShell =
+            req.mode === "navigate" || (sameOrigin && (
+                url.pathname.endsWith("/") ||
+                url.pathname.endsWith("/index.html") ||
+                url.pathname.endsWith(".html") ||
+                url.pathname.endsWith(".js") ||
+                url.pathname.endsWith(".css")
+            ));
+        if (isAppShell) {
+            try {
+                // ブラウザHTTPキャッシュも避けたいときは cache:'no-store' でもOK
+                const fresh = await fetch(req);
+                const cache = await caches.open(CACHE);
+                cache.put(req, fresh.clone());
+                return fresh;
+            } catch {
+                const hit = await caches.match(req);
+                if (hit) return hit;
+                throw new Error("offline");
+            }
+        }
+
+        // ③ それ以外（音声・画像など）は従来通り：キャッシュ→ネット
         const cached = await caches.match(req);
         return cached || fetch(req);
     })());
 });
+
