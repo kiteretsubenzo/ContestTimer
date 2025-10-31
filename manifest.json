@@ -1,0 +1,16 @@
+﻿{
+	"name": "ContestTimer",
+	"short_name": "Timer",
+	"start_url": "./",
+	"display": "standalone",
+	"background_color": "#1a1d21",
+	"theme_color": "#1a1d21",
+	"description": "Contest Timer for performance timing and alarms.",
+	"icons": [
+		{
+			"src": "apple-touch-icon.png",
+			"sizes": "192x192",
+			"type": "image/png"
+		}
+	]
+}
