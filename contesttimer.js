@@ -124,6 +124,33 @@
         });
     }
 
+    // --- 試聴（armed + focusout 最小差分） ---
+    let armed = false;
+    // セレクト操作開始を検出（iOS/PCどちらも拾えるように2系統）
+    selSound.addEventListener('pointerdown', () => { armed = true; }, { passive: true });
+    selSound.addEventListener('focusin', () => { armed = true; });
+
+    // セレクトが閉じたら（フォーカス喪失）必ず1回だけ再生
+    selSound.addEventListener('focusout', async () => {
+        if (!armed) return;
+        armed = false;
+        try {
+            // WebAudio 準備（未作成 or 一時サスペンドでもOK）
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+                await audioCtx.resume();
+            } else {
+                try { await audioCtx.resume(); } catch { }
+            }
+            // 音源確保 → 即時鳴動（重ね鳴りOK方針）
+            const name = selSound.value;
+            await ensureBuffer(name);
+            playNow(name);
+        } catch (e) {
+            console.warn('preview failed:', e);
+        }
+    });
+
     function createAlarmRow(values = null) {
         const clone = template.cloneNode(true);
         clone.style.display = '';
